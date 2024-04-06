@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <% if (!locals.submit) { %>
+        <h1>Start Game!</h1>
+        <form action="/" method="post">
+            <input type="checkbox" name="Noun/Pronoun" id="N&P">
+            <label for="N&P">Noun/Pronoun</label>
+            <input type="checkbox" name="Adjective" id="ADJ">
+            <label for="ADJ">Adjective</label>
+            <input type="checkbox" name="Verb" id="VRB">
+            <label for="VRB">Verb</label>
+            <input type="hidden" name="word" value="<%= locals.word %>">
+            <input type="submit" value="Start">
+        </form>
+    <% } else { %>
+        <h1 id="word" style="display: inline;"><%= locals.word %></h1>
+        <button onclick="pronounceWord()">pronounce</button>
+        <% if(locals.error) { %>
+            <h2 style="color: red;"><%= locals.error %></h2>
+        <% } %>
+        <form action="/" method="post">
+            <input type="text" name="User Input" id="userip" required>
+            <input type="button" value="pronounce" onclick="pronounce()">
+            <input type="hidden" name="word" value="<%= locals.word %>">
+            <input type="submit" value="submit">
+        </form>
+        <button id="record" onclick="liveTranscript('record', 'userip')">record</button>
+    <% } %>
+</body>
+
+<script>
+    function pronounceWord() {
+        var word = document.getElementById('word').innerText;
+        var utterance = new SpeechSynthesisUtterance(word);
+        speechSynthesis.speak(utterance);
+    }
+
+    function pronounce() {
+        var userInput = document.getElementById('userip').value;
+        var utterance = new SpeechSynthesisUtterance(userInput);
+        speechSynthesis.speak(utterance);
+    }
+
+    function liveTranscript(buttonId, resultDivId) {
+        const recognition = new webkitSpeechRecognition();
+        const voiceButton = document.getElementById(buttonId);
+        const resultDiv = document.getElementById(resultDivId);
+
+        recognition.start();
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            resultDiv.value = transcript.split(' ').join('');
+        };
+    }
+
+    const textInput = document.getElementById('userip');
+    textInput.addEventListener('input', function() {
+        const value = this.value
+        if(/\s/.test(value)) {
+            this.value = value.replace(/\s/g, '')
+            alert("Whitespace characters are not allowed.")
+        }
+    })
+
+</script>
+
+</html>
