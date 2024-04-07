@@ -13,9 +13,11 @@
   "dependencies": {
     "@google-cloud/text-to-speech": "^5.1.0",
     "axios": "^1.6.8",
+    "dictionary-en": "^4.0.0",
     "ejs": "^3.1.9",
     "express": "^4.19.2",
     "gtts": "^0.2.1",
+    "nspell": "^2.1.5",
     "openai": "^4.32.0",
     "pos": "^0.4.2",
     "say": "^0.16.0",

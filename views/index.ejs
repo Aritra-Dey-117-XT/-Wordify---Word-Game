@@ -8,7 +8,7 @@
 <body>
     <% if (!locals.submit) { %>
         <h1>Start Game!</h1>
-        <form action="/" method="post">
+        <form action="/" method="post" onsubmit="return validateForm()">
             <input type="checkbox" name="Noun/Pronoun" id="N&P">
             <label for="N&P">Noun/Pronoun</label>
             <input type="checkbox" name="Adjective" id="ADJ">
@@ -19,6 +19,7 @@
             <input type="submit" value="Start">
         </form>
     <% } else { %>
+        <p style="font-weight: bold; color: rgb(47, 255, 89); font-size: 40px">Points : <%= locals.points || '0' %></p>
         <h1 id="word" style="display: inline;"><%= locals.word %></h1>
         <button onclick="pronounceWord()">pronounce</button>
         <% if(locals.error) { %>
@@ -35,6 +36,16 @@
 </body>
 
 <script>
+    function validateForm() {
+        var checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        var checked = Array.prototype.slice.call(checkboxes).some(x => x.checked);
+        if (!checked) {
+            alert("Please select at least one checkbox.");
+            return false;
+        }
+        return true;
+    }
+
     function pronounceWord() {
         var word = document.getElementById('word').innerText;
         var utterance = new SpeechSynthesisUtterance(word);
