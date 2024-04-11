@@ -16,6 +16,10 @@ app.use(express.urlencoded({extended: true}))
 app.use(express.static("public"))
 
 app.get("/", (req, res) => {
+    words = []
+    started = 0
+    type = []
+    points = 0
     res.render("index.ejs")
 })
 
@@ -56,46 +60,55 @@ app.post("/", async (req, res) => {
     }
 
     if(started) {
-        if((await isLegitEnglishWord(req.body['User Input']))) {
 
-            if(req.body['User Input'][0] == req.body.word[req.body.word.length-1]) {
+        if(req.body.message) {
+            let result_message = `Game Over! Your score is ${points}.`
+            say.speak(result_message)
+            res.render("index.ejs", {gameOver:true, points: points})
 
-                if(type.includes(getPartOfSpeech(req.body['User Input']))) {
+        } else {
 
-                    if(!(words.includes(req.body['User Input']))) {
-                        words.push(req.body['User Input'])
-                        let letter = req.body['User Input'][req.body['User Input'].length - 1]
-                        let word = await wordgenerator(words, letter, 0)
-                        say.speak(word)
-                        res.render("index.ejs", {submit: true, word: word, points: ++points})
+            if((await isLegitEnglishWord(req.body['User Input']))) {
+
+                if(req.body['User Input'][0] == req.body.word[req.body.word.length-1]) {
+
+                    if(type.includes(getPartOfSpeech(req.body['User Input']))) {
+
+                        if(!(words.includes(req.body['User Input']))) {
+                            words.push(req.body['User Input'])
+                            let letter = req.body['User Input'][req.body['User Input'].length - 1]
+                            let word = await wordgenerator(words, letter, 0)
+                            say.speak(word)
+                            res.render("index.ejs", {submit: true, word: word, points: ++points})
+
+                        } else {
+                            let word = req.body.word
+                            let error = "This word has already been used. Please enter a new word."
+                            say.speak(error)
+                            res.render("index.ejs", {submit: true, word: word, error: error, points: points})
+                        }
 
                     } else {
                         let word = req.body.word
-                        let error = "This word has already been used. Please enter a new word."
+                        let error = "This word does not belong to the selected part of speech. Please enter a new word."
                         say.speak(error)
                         res.render("index.ejs", {submit: true, word: word, error: error, points: points})
                     }
-
+                    
                 } else {
                     let word = req.body.word
-                    let error = "This word does not belong to the selected part of speech. Please enter a new word."
+                    let error = "User Input should start with the last letter of the previous word."
                     say.speak(error)
                     res.render("index.ejs", {submit: true, word: word, error: error, points: points})
                 }
-                
+
             } else {
                 let word = req.body.word
-                let error = "User Input should start with the last letter of the previous word."
+                let error = "This word does not exist in the English Dictionary. Please enter a valid word."
                 say.speak(error)
                 res.render("index.ejs", {submit: true, word: word, error: error, points: points})
             }
-
-    } else {
-        let word = req.body.word
-        let error = "This word does not exist in the English Dictionary. Please enter a valid word."
-        say.speak(error)
-        res.render("index.ejs", {submit: true, word: word, error: error, points: points})
-    }
+        }
     } else {
         started = 1
         let word = await wordgenerator(words, "a", i)
