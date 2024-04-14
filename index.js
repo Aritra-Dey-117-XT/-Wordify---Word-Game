@@ -1,9 +1,16 @@
+import "dotenv/config"
 import express from "express"
 import axios from "axios"
 import say from "say"
 import pos from 'pos'
 import dictionary from 'dictionary-en';
 import nspell from 'nspell';
+import pg from "pg"
+import {v4 as uuidv4} from "uuid"
+import bcrypt from "bcrypt"
+import passport from "passport"
+import {Strategy as LocalStrategy} from "passport-local"
+import session from "express-session"
 
 const port = 3000
 const app = express()
@@ -12,15 +19,98 @@ let started = 0
 let type = []
 let points = 0
 
+const db = new pg.Client({
+    user: process.env.USER,
+    host: process.env.HOST,
+    database: process.env.DATABASE,
+    password: process.env.PASSWORD,
+    port: process.env.PORT
+})
+
+db.connect()
+
 app.use(express.urlencoded({extended: true}))
 app.use(express.static("public"))
+app.use(session({
+    secret: process.env.SECRET,
+    resave: false,
+    saveUninitialized: false
+}))
+app.use(passport.initialize())
+app.use(passport.session())
+
+passport.use("local-register", new LocalStrategy(async(username, password, done) => {
+    try{
+        const result = await db.query("SELECT * FROM users WHERE username = $1", [username]);
+        const existingUser = result.rows[0]
+        if(existingUser) return done(null, false)
+        const hashedPassword = await bcrypt.hash(password, 15)
+        const newResult = await db.query("INSERT INTO users(user_id, username, password) VALUES($1, $2, $3) RETURNING *", [uuidv4(), username, hashedPassword])
+        const newUser = newResult.rows[0]
+        return done(null, newUser)
+    } catch(error) {
+        console.log(error)
+        return done(error, false)
+    }
+}))
+
+passport.use("local-login", new LocalStrategy(async(username, password, done) => {
+    try {
+        const result = await db.query("SELECT * FROM users WHERE username = $1", [username])
+        const user = result.rows[0]
+        if(!user) return done(null, false)
+        const passwordMatched = await bcrypt.compare(password, user.password)
+    if(passwordMatched) {
+        return done(null, user)
+    } else {
+        return done(null, false)
+    }
+    } catch(error) {
+        console.log(error)
+        return done(error, false)
+    }
+}))
+
+passport.serializeUser((user, done) => {
+    done(null, user.user_id)
+})
+
+passport.deserializeUser(async(id, done) => {
+    try {
+        const result = await db.query("SELECT * FROM users WHERE user_id = $1", [id])
+        const user = result.rows[0]
+        done(null, user)
+    } catch(error) {
+        done(error, false)
+    }
+})
+
+
+app.get("/register", (req, res) => {
+    res.render("register.ejs")
+})
+
+app.get("/login", (req, res) => {
+    res.render("login.ejs")
+})
 
 app.get("/", (req, res) => {
-    words = []
-    started = 0
-    type = []
-    points = 0
-    res.render("index.ejs")
+    if(req.isAuthenticated()) {
+        words = []
+        started = 0
+        type = []
+        points = 0
+        res.render("index.ejs")
+    } else {
+        res.redirect("/login")
+    }
+})
+
+app.get("/logout", (req, res) => {
+    res.clearCookie("connect.sid")
+    req.logOut(() => {
+        res.redirect("/")
+    }) 
 })
 
 app.post("/", async (req, res) => {
@@ -117,11 +207,16 @@ app.post("/", async (req, res) => {
     }
 })
 
+app.post("/register", passport.authenticate("local-register", {
+    failureRedirect: "/register",
+    successRedirect: "/"
+}))
+
+app.post("/login", passport.authenticate("local-login", {
+    failureRedirect: "/login",
+    successRedirect: "/"
+}))
+
 app.listen(port, () => {
     console.log(`Node Server is running on Port ${port}.`)
-})
-
-
-app.get("/lt", (req, res) => {
-    res.render("liveTranscript.ejs")
 })
